@@ -2,15 +2,14 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { RenderParameters, ProductImage, StagingParameters, CameraAngle } from "../types";
 
 export class GeminiService {
-  private readonly MODEL_NAME = 'gemini-2.5-flash-image';
-  private readonly MAX_RETRIES = 3;
-  private readonly INITIAL_RETRY_DELAY = 2000;
+  private readonly MODEL_NAME = 'gemini-3-pro-image-preview';
+  private readonly MAX_RETRIES = 2;
+  private readonly INITIAL_RETRY_DELAY = 3000;
 
   private getApiKey(): string {
-    // Vite injects environment variables defined in vite.config.ts
     const key = process.env.API_KEY;
     if (!key || key === "undefined") {
-      throw new Error("API_KEY_MISSING: Chưa tìm thấy API_KEY. Hãy cấu hình trong mục Settings > Secrets and variables > Actions trên GitHub với tên là API_KEY.");
+      throw new Error("API_KEY_MISSING");
     }
     return key;
   }
@@ -35,7 +34,7 @@ export class GeminiService {
         const base64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
         resolve(base64);
       };
-      img.onerror = () => reject("Không thể tải hình ảnh. Vui lòng kiểm tra lại file.");
+      img.onerror = () => reject("Không thể xử lý hình ảnh.");
       img.src = url;
     });
   }
@@ -47,6 +46,7 @@ export class GeminiService {
         return await fn();
       } catch (error: any) {
         lastError = error;
+        // Nếu lỗi quota hoặc 429, đợi và thử lại (trừ khi là limit 0 hẳn)
         if (error?.status === 429 && i < this.MAX_RETRIES) {
           const delay = this.INITIAL_RETRY_DELAY * Math.pow(2, i);
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -67,17 +67,18 @@ export class GeminiService {
     const productBase64 = await this.processImage(product.originalUrl);
     
     const systemPrompt = `
-      Professional CGI Product Rendering.
-      Product: ${product.viewType} view.
+      Professional CGI Furniture Rendering.
+      Task: Create a high-end catalog image.
+      Product View: ${product.viewType}.
       Environment: ${params.roomType}.
-      Style: ${params.designStyle}.
-      Lighting: ${params.lightingEnv}, ${params.lightingDirection} direction.
+      Design Style: ${params.designStyle}.
+      Lighting: ${params.lightingEnv}, ${params.lightingDirection} source.
       Mood: ${params.mood}.
-      Task: Place the product naturally in the scene with realistic shadows and materials.
-      ${referenceImage ? "CRITICAL: Emulate the EXACT visual style from the provided MOOD BOARD image." : ""}
+      Instructions: Place the product in the center of the scene. Ensure physics-accurate shadows, realistic texture mapping, and professional photographic composition.
+      ${referenceImage ? "CRITICAL: Emulate the lighting, color grading, and material quality from the provided MOOD BOARD image exactly." : ""}
     `.trim();
 
-    let parts: any[] = [
+    const parts: any[] = [
       { inlineData: { mimeType: 'image/jpeg', data: productBase64 } }
     ];
 
@@ -93,6 +94,12 @@ export class GeminiService {
         ai.models.generateContent({
           model: this.MODEL_NAME,
           contents: { parts },
+          config: {
+            imageConfig: {
+              aspectRatio: "1:1",
+              imageSize: "1K"
+            }
+          }
         })
       );
       for (const part of result.candidates?.[0]?.content?.parts || []) {
@@ -115,27 +122,16 @@ export class GeminiService {
       return { inlineData: { mimeType: 'image/jpeg', data: base64 } };
     }));
 
-    const isSubShot = !!masterShotUrl;
-    
-    const angleDescription = {
-      [CameraAngle.WIDE]: "Panoramic wide shot.",
-      [CameraAngle.MEDIUM]: "Medium range shot.",
-      [CameraAngle.CLOSEUP]: "Macro-style detail shot.",
-      [CameraAngle.TOP_DOWN]: "BIRD'S EYE VIEW.",
-      [CameraAngle.SIDE_PERSPECTIVE]: "Diagonal 45-degree view.",
-      [CameraAngle.DETAIL_MACRO]: "Extreme close-up."
-    }[angle] || angle;
-
     const systemPrompt = `
-      Professional Interior CGI Staging.
-      ${isSubShot ? "SPATIAL CHANGE: MOVE CAMERA. Keep same room but different angle." : "ESTABLISH MASTER SHOT."}
+      Full Scene Professional Interior CGI.
       Atmosphere: ${params.mood}. Style: ${params.designStyle}. Lighting: ${params.lightingEnv}.
-      Current Camera Angle: ${angleDescription}.
+      Camera Perspective: ${angle}.
+      Goal: Arrange all provided furniture items into a cohesive, aesthetically perfect interior design. 
+      Maintain consistent materials and lighting across the entire collection.
     `.trim();
 
-    let parts: any[] = [];
-    
-    if (isSubShot && masterShotUrl) {
+    const parts: any[] = [];
+    if (masterShotUrl) {
       const masterBase64 = await this.processImage(masterShotUrl);
       parts.push({ inlineData: { mimeType: 'image/jpeg', data: masterBase64 } });
     } else if (referenceImage) {
@@ -151,6 +147,12 @@ export class GeminiService {
         ai.models.generateContent({
           model: this.MODEL_NAME,
           contents: { parts },
+          config: {
+            imageConfig: {
+              aspectRatio: angle === CameraAngle.WIDE ? "16:9" : "4:3",
+              imageSize: "1K"
+            }
+          }
         })
       );
       for (const part of result.candidates?.[0]?.content?.parts || []) {
@@ -170,9 +172,12 @@ export class GeminiService {
           contents: {
             parts: [
               { inlineData: { mimeType: 'image/jpeg', data: base64 } },
-              { text: `Refine this image: ${prompt}.` }
+              { text: `Apply professional CGI edit: ${prompt}. Maintain original objects and style.` }
             ],
           },
+          config: {
+            imageConfig: { imageSize: "1K" }
+          }
         })
       );
       for (const part of result.candidates?.[0]?.content?.parts || []) {

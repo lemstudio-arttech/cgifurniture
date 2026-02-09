@@ -13,6 +13,14 @@
       h1, h2, h3, h4, h5, h6 {
         font-family: 'Outfit', sans-serif;
       }
+      @keyframes gradient-x {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+      .animate-gradient {
+        background-size: 200% 200%;
+        animation: gradient-x 5s ease infinite;
+      }
     </style>
   <script type="importmap">
 {
