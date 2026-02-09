@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { RenderParameters, ProductImage, StagingParameters, CameraAngle } from "../types";
 
@@ -8,9 +7,10 @@ export class GeminiService {
   private readonly INITIAL_RETRY_DELAY = 2000;
 
   private getApiKey(): string {
+    // Vite injects environment variables defined in vite.config.ts
     const key = process.env.API_KEY;
-    if (!key) {
-      throw new Error("API_KEY_MISSING: Chưa tìm thấy API_KEY. Hãy cấu hình trong mục Settings > Secrets and variables > Actions trên GitHub.");
+    if (!key || key === "undefined") {
+      throw new Error("API_KEY_MISSING: Chưa tìm thấy API_KEY. Hãy cấu hình trong mục Settings > Secrets and variables > Actions trên GitHub với tên là API_KEY.");
     }
     return key;
   }
@@ -51,9 +51,6 @@ export class GeminiService {
           const delay = this.INITIAL_RETRY_DELAY * Math.pow(2, i);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
-        }
-        if (error?.status === 401) {
-          throw new Error("API_KEY_INVALID: API Key không hợp lệ trong GitHub Secrets.");
         }
         throw error;
       }

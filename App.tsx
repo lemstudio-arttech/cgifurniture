@@ -187,11 +187,11 @@ const App: React.FC = () => {
     } catch (err: any) {
       console.error("Render error:", err);
       if (err.message.includes("API_KEY_MISSING")) {
-        setErrorMessage("Thiếu API_KEY. Vui lòng vào Netlify Site Settings > Environment Variables để cấu hình biến API_KEY.");
+        setErrorMessage("Thiếu API_KEY. Hãy vào GitHub Repository > Settings > Secrets and variables > Actions để tạo Secret tên là API_KEY.");
       } else if (err.message.includes("API_KEY_INVALID")) {
-        setErrorMessage("API Key không hợp lệ. Vui lòng kiểm tra lại mã khóa Gemini của bạn.");
+        setErrorMessage("API Key không hợp lệ hoặc không có quyền truy cập mô hình Imagen. Hãy kiểm tra lại key trong GitHub Secrets.");
       } else {
-        setErrorMessage(`Lỗi render: ${err.message || "Vui lòng kiểm tra lại kết nối mạng."}`);
+        setErrorMessage(`Lỗi hệ thống: ${err.message || "Vui lòng kiểm tra lại cấu hình."}`);
       }
     } finally {
       setIsRendering(false);
@@ -280,7 +280,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Error Modal */}
       {errorMessage && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-md bg-black/20 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl p-8 border border-red-100">
@@ -294,7 +293,6 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Edit Modal Overlay */}
       {editingState && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl bg-black/40 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-2xl rounded-[40px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
