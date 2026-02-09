@@ -21,7 +21,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # Đã gỡ bỏ cache: 'npm' để tránh lỗi thiếu file lock khi upload thủ công
 
       - name: Install dependencies
         run: npm install
